@@ -1,0 +1,86 @@
+services:
+  php:
+    build:
+      context: ./php # Indica onde está o arquivo Dockerfile
+      dockerfile: Dockerfile
+
+  container_name: ancete-ifsp-php # Apelido para o container
+  restart: always
+  volumes:
+    - ./web:/var/www/html # Irá copiar o conteudo da pasta
+  networks:
+    - lamp-network
+  ports:
+    # mapear as portas para ficarem visiveis na máquina host
+    - "80:80"
+  links:
+    # Criar conexão com o container do banco de dados
+    - mysql
+    - postgres  
+
+  postgres:
+    image: postgres:12
+    container_name: ancete-ifsp-pgsql
+    restart: always
+    enviroment:
+      POSTGRES_PASSWORD: postdba
+      POSTGRES_USER: postgres
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ancete-ifsp-pgadmin
+    enviroment:
+      PGADMIN_DEFAULT_EMAIL: postgres@servidor.com
+      PGADMIN_DEFAULT_PASSWORD: postdba
+    ports:
+      - 8081:80
+    depends_on:
+      - postgres
+    networks:
+      - lamp-network
+
+  mysql:
+    image: mysql:5.7 # A versão 8.0 está com instabilidade
+    container_name: ancete-ifsp-mysql
+    restart: always # por padrão o Docker não reinicia o container
+    volumes:
+      - ./mysql:/var/lib/mysql
+    ports:
+      - "3306:3306" #mapeei a porta para funcionar o Dbeaver,
+    environment:
+      MYSQL_ROOT_PASSWORD: root #Definir senha do usuário root
+      MYSQL_DATABASE: teste # Iniciar o container com um banco criado
+    networks:
+      - lamp-network
+
+  phpmyadmin:
+    build:
+      context: ./phpmyadmin
+      dockerfile: Dockerfile
+
+    container_name: ancete-ifsp-phpmyadmin
+    restart: always
+    volumes:
+      - /sessions
+    ports:
+      - "8080:80"
+    links:
+      - mysql
+    environment:
+      PMA_ARBITRARY: 0
+      PMA_HOST: mysql
+    networks:
+      - lamp-network
+
+networks:
+  lamp-network:
+    driver: bridge
+
+volumes:
+  postgres:
+  mysql:
+  web:
+    driver: local
+
